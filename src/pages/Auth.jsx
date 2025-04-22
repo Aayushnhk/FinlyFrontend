@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FaLock } from 'react-icons/fa';
-import { useAuth } from '../contexts/AuthContext'; // Import useAuth
+import { useAuth } from '../contexts/AuthContext';
 import Alert from "../components/Alert";
+
+// Set base API URL from environment variables
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 function Auth() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -11,22 +14,22 @@ function Auth() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-    ...(mode === 'signup' && { firstName: '', lastName: '' }), // Add name fields for signup
+    ...(mode === 'signup' && { firstName: '', lastName: '' }),
   });
-  const [errorMessage, setErrorMessage] = useState(''); // State for error messages
-  const [successMessage, setSuccessMessage] = useState(''); // State for success messages
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
   const navigate = useNavigate();
-  const { login } = useAuth(); // Access the login function from the context
+  const { login } = useAuth();
 
   useEffect(() => {
     setIsLogin(mode !== 'signup');
     setFormData(prev => ({
       ...prev,
-      ...(mode === 'signup' && !prev.firstName && { firstName: '' }), // Ensure name fields exist on mode change
+      ...(mode === 'signup' && !prev.firstName && { firstName: '' }),
       ...(mode === 'signup' && !prev.lastName && { lastName: '' }),
     }));
-    setErrorMessage(''); // Clear any previous errors on mode change
-    setSuccessMessage(''); // Clear any previous success messages
+    setErrorMessage('');
+    setSuccessMessage('');
   }, [mode]);
 
   const handleChange = (e) => {
@@ -39,34 +42,36 @@ function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage(''); // Clear any previous error message
-    setSuccessMessage(''); // Clear any previous success message
+    setErrorMessage('');
+    setSuccessMessage('');
 
     const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    const fullUrl = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : endpoint;
 
     try {
-      const response = await fetch(endpoint, {
+      const response = await fetch(fullUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
+        credentials: 'include'
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        console.log(isLogin ? 'Login successful:' : 'Signup successful:');
+        console.log(isLogin ? 'Login successful:' : 'Signup successful:', data);
         if (isLogin && data.token && data.userId) {
           localStorage.setItem('authToken', data.token);
           localStorage.setItem('userId', data.userId);
           login({ token: data.token, user: { id: data.userId } });
-          setSuccessMessage('Login successful!'); // Set success message
-          setTimeout(() => navigate('/'), 1500); // Navigate after a short delay
+          setSuccessMessage('Login successful!');
+          setTimeout(() => navigate('/'), 1500);
         } else if (!isLogin && data.id) {
           localStorage.setItem('userId', data.id);
-          setSuccessMessage('Signup successful! Redirecting to login...'); // Set success message
-          setTimeout(() => setSearchParams({ mode: 'login' }), 1500); // Redirect to login after signup
+          setSuccessMessage('Signup successful! Redirecting to login...');
+          setTimeout(() => setSearchParams({ mode: 'login' }), 1500);
         } else if (isLogin && !data.token) {
           setErrorMessage('Login successful, but no token received.');
         }
@@ -76,7 +81,7 @@ function Auth() {
       }
     } catch (error) {
       console.error('There was an error during authentication:', error);
-      setErrorMessage('Failed to connect to the server');
+      setErrorMessage(error.message || 'Failed to connect to the server');
     }
   };
 
