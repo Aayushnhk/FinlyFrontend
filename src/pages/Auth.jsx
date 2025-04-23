@@ -51,7 +51,7 @@ function Auth() {
         // Real-time password check on signup
         if (mode === "signup" && name === "password") {
             if (!isPasswordComplexFrontend(value)) {
-                setPasswordError("Password must be at least 8 characters and contain letters and numbers.");
+                setPasswordError("Your password must be a minimum of 8 characters and include a combination of both letters and numbers.");
             } else {
                 setPasswordError("");
             }
