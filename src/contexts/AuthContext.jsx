@@ -54,7 +54,7 @@ export const AuthProvider = ({ children }) => {
     const storedToken = localStorage.getItem('authToken');
     if (storedToken && !user) {
       setToken(storedToken);
-      axios.get('/api/auth/me', {
+      axios.get(`${import.meta.env.VITE_API_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${storedToken}`,
         },

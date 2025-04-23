@@ -1,40 +1,40 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { FaLock } from 'react-icons/fa';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { FaLock } from "react-icons/fa";
+import { useAuth } from "../contexts/AuthContext";
 import Alert from "../components/Alert";
 
 // Set base API URL from environment variables
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
 function Auth() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const mode = searchParams.get('mode');
-  const [isLogin, setIsLogin] = useState(mode !== 'signup');
+  const mode = searchParams.get("mode");
+  const [isLogin, setIsLogin] = useState(mode !== "signup");
   const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    ...(mode === 'signup' && { firstName: '', lastName: '' }),
+    email: "",
+    password: "",
+    ...(mode === "signup" && { firstName: "", lastName: "" }),
   });
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
   const navigate = useNavigate();
   const { login } = useAuth();
 
   useEffect(() => {
-    setIsLogin(mode !== 'signup');
-    setFormData(prev => ({
+    setIsLogin(mode !== "signup");
+    setFormData((prev) => ({
       ...prev,
-      ...(mode === 'signup' && !prev.firstName && { firstName: '' }),
-      ...(mode === 'signup' && !prev.lastName && { lastName: '' }),
+      ...(mode === "signup" && !prev.firstName && { firstName: "" }),
+      ...(mode === "signup" && !prev.lastName && { lastName: "" }),
     }));
-    setErrorMessage('');
-    setSuccessMessage('');
+    setErrorMessage("");
+    setSuccessMessage("");
   }, [mode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -42,75 +42,83 @@ function Auth() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage('');
-    setSuccessMessage('');
+    setErrorMessage("");
+    setSuccessMessage("");
 
-    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/register';
+    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
     const fullUrl = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : endpoint;
 
     try {
       const response = await fetch(fullUrl, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
-        credentials: 'include'
+        credentials: "include",
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        console.log(isLogin ? 'Login successful:' : 'Signup successful:', data);
+        console.log(isLogin ? "Login successful:" : "Signup successful:", data);
         if (isLogin && data.token && data.userId) {
-          localStorage.setItem('authToken', data.token);
-          localStorage.setItem('userId', data.userId);
+          localStorage.setItem("authToken", data.token);
+          localStorage.setItem("userId", data.userId);
           login({ token: data.token, user: { id: data.userId } });
-          setSuccessMessage('Login successful!');
-          setTimeout(() => navigate('/'), 1500);
+          setSuccessMessage("Login successful!");
+          setTimeout(() => navigate("/"), 1500);
         } else if (!isLogin && data.id) {
-          localStorage.setItem('userId', data.id);
-          setSuccessMessage('Signup successful! Redirecting to login...');
-          setTimeout(() => setSearchParams({ mode: 'login' }), 1500);
+          localStorage.setItem("userId", data.id);
+          setSuccessMessage("Signup successful! Redirecting to login...");
+          setTimeout(() => setSearchParams({ mode: "login" }), 1500);
         } else if (isLogin && !data.token) {
-          setErrorMessage('Login successful, but no token received.');
+          setErrorMessage("Login successful, but no token received.");
         }
       } else {
-        console.error(isLogin ? 'Login failed:' : 'Signup failed:', data);
-        setErrorMessage(data.error || 'Authentication failed');
+        console.error(isLogin ? "Login failed:" : "Signup failed:", data);
+        setErrorMessage(data.error || "Authentication failed");
       }
     } catch (error) {
-      console.error('There was an error during authentication:', error);
-      setErrorMessage(error.message || 'Failed to connect to the server');
+      console.error("There was an error during authentication:", error);
+      setErrorMessage(error.message || "Failed to connect to the server");
     }
   };
 
   const handleCloseErrorAlert = () => {
-    setErrorMessage('');
+    setErrorMessage("");
   };
 
   const handleCloseSuccessAlert = () => {
-    setSuccessMessage('');
+    setSuccessMessage("");
   };
 
   return (
     <div className="bg-black-900 flex items-start justify-center p-4 pt-24">
       <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-8 transition-all duration-300 ease-in-out hover:shadow-xl">
         <h2 className="text-center text-2xl font-bold text-white mb-6">
-          {isLogin ? 'Sign in to your account' : 'Create a new account'}
+          {isLogin ? "Sign in to your account" : "Create a new account"}
         </h2>
 
         {successMessage && (
-          <Alert message={successMessage} type="login" onClose={handleCloseSuccessAlert} />
+          <Alert
+            message={successMessage}
+            type="login"
+            onClose={handleCloseSuccessAlert}
+          />
         )}
 
         {errorMessage && (
-          <Alert message={errorMessage} type="error" onClose={handleCloseErrorAlert} />
+          <Alert
+            message={errorMessage}
+            type="error"
+            onClose={handleCloseErrorAlert}
+          />
         )}
 
         <form className="space-y-4" onSubmit={handleSubmit}>
           <input type="hidden" name="remember" defaultValue="true" />
-          {mode === 'signup' && (
+          {mode === "signup" && (
             <>
               <div>
                 <label htmlFor="firstName" className="sr-only">
@@ -171,7 +179,7 @@ function Auth() {
               id="password"
               name="password"
               type="password"
-              autoComplete={isLogin ? 'current-password' : 'new-password'}
+              autoComplete={isLogin ? "current-password" : "new-password"}
               required
               className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
               placeholder="Password"
@@ -202,16 +210,16 @@ function Auth() {
             className="w-full flex justify-center items-center gap-2 py-2 px-4 text-white bg-teal-600 hover:bg-teal-700 font-medium rounded-md transition-colors duration-200 cursor-pointer"
           >
             <FaLock />
-            {isLogin ? 'Sign in' : 'Sign up'}
+            {isLogin ? "Sign in" : "Sign up"}
           </button>
         </form>
 
         <div className="mt-6 text-center text-sm text-gray-400">
           {isLogin ? (
             <>
-              Don&apos;t have an account?{' '}
+              Don&apos;t have an account?{" "}
               <button
-                onClick={() => setSearchParams({ mode: 'signup' })}
+                onClick={() => setSearchParams({ mode: "signup" })}
                 className="text-teal-500 hover:underline font-medium cursor-pointer"
               >
                 Sign up
@@ -219,9 +227,9 @@ function Auth() {
             </>
           ) : (
             <>
-              Already have an account?{' '}
+              Already have an account?{" "}
               <button
-                onClick={() => setSearchParams({ mode: 'login' })}
+                onClick={() => setSearchParams({ mode: "login" })}
                 className="text-teal-500 hover:underline font-medium cursor-pointer"
               >
                 Sign in
