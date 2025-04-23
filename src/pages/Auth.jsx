@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaLock } from "react-icons/fa";
+import { FaLock, FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons
 import { useAuth } from "../contexts/AuthContext";
 import Alert from "../components/Alert";
 
@@ -25,7 +25,8 @@ function Auth() {
     });
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
-    const [passwordError, setPasswordError] = useState(""); // State for password error message
+    const [passwordError, setPasswordError] = useState("");
+    const [showPassword, setShowPassword] = useState(false); // State for password visibility
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -38,7 +39,8 @@ function Auth() {
         }));
         setErrorMessage("");
         setSuccessMessage("");
-        setPasswordError(""); // Clear password error on mode change
+        setPasswordError("");
+        setShowPassword(false); // Reset password visibility on mode change
     }, [mode]);
 
     const handleChange = (e) => {
@@ -48,7 +50,6 @@ function Auth() {
             [name]: value,
         }));
 
-        // Real-time password check on signup
         if (mode === "signup" && name === "password") {
             if (!isPasswordComplexFrontend(value)) {
                 setPasswordError("Your password must be a minimum of 8 characters and include a combination of both letters and numbers.");
@@ -115,6 +116,10 @@ function Auth() {
 
     const handleCloseSuccessAlert = () => {
         setSuccessMessage("");
+    };
+
+    const togglePasswordVisibility = () => {
+        setShowPassword(!showPassword);
     };
 
     return (
@@ -195,14 +200,14 @@ function Auth() {
                         />
                     </div>
 
-                    <div>
+                    <div className="relative">
                         <label htmlFor="password" className="sr-only">
                             Password
                         </label>
                         <input
                             id="password"
                             name="password"
-                            type="password"
+                            type={showPassword ? "text" : "password"} // Toggle password visibility
                             autoComplete={isLogin ? "current-password" : "new-password"}
                             required
                             className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
@@ -210,6 +215,13 @@ function Auth() {
                             value={formData.password}
                             onChange={handleChange}
                         />
+                        <button
+                            type="button"
+                            onClick={togglePasswordVisibility}
+                            className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 focus:outline-none"
+                        >
+                            {showPassword ? <FaEyeSlash /> : <FaEye />}
+                        </button>
                         {mode === "signup" && passwordError && (
                             <p className="mt-1 text-sm text-red-500">{passwordError}</p>
                         )}
