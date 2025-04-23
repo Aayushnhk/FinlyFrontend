@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaLock, FaEye, FaEyeSlash } from "react-icons/fa"; // Import eye icons
+import { FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
 import Alert from "../components/Alert";
 
@@ -26,7 +26,7 @@ function Auth() {
     const [errorMessage, setErrorMessage] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [passwordError, setPasswordError] = useState("");
-    const [showPassword, setShowPassword] = useState(false); // State for password visibility
+    const [showPassword, setShowPassword] = useState(false);
     const navigate = useNavigate();
     const { login } = useAuth();
 
@@ -40,7 +40,7 @@ function Auth() {
         setErrorMessage("");
         setSuccessMessage("");
         setPasswordError("");
-        setShowPassword(false); // Reset password visibility on mode change
+        setShowPassword(false);
     }, [mode]);
 
     const handleChange = (e) => {
@@ -183,7 +183,7 @@ function Auth() {
                             </div>
                         </>
                     )}
-                    <div>
+                    <div className="relative"> {/* Add relative positioning here */}
                         <label htmlFor="email-address" className="sr-only">
                             Email address
                         </label>
@@ -200,14 +200,14 @@ function Auth() {
                         />
                     </div>
 
-                    <div className="relative">
+                    <div className="relative"> {/* Add relative positioning here */}
                         <label htmlFor="password" className="sr-only">
                             Password
                         </label>
                         <input
                             id="password"
                             name="password"
-                            type={showPassword ? "text" : "password"} // Toggle password visibility
+                            type={showPassword ? "text" : "password"}
                             autoComplete={isLogin ? "current-password" : "new-password"}
                             required
                             className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
@@ -223,7 +223,7 @@ function Auth() {
                             {showPassword ? <FaEyeSlash /> : <FaEye />}
                         </button>
                         {mode === "signup" && passwordError && (
-                            <p className="mt-1 text-sm text-red-500">{passwordError}</p>
+                            <p className="mt-1 text-sm text-red-500 absolute bottom-[-20px] left-0">{passwordError}</p> 
                         )}
                     </div>
 
