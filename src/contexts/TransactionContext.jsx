@@ -12,6 +12,7 @@ export const TransactionProvider = ({ children }) => {
   const [editingTransaction, setEditingTransaction] = useState(null);
   const { token, user } = useAuth(); // Get the token from AuthContext
   const { fetchBudgets } = useBudgets(); // Get the fetchBudgets function
+  const [transactionUpdated, setTransactionUpdated] = useState(false); // New state to trigger budget re-calculation
   const API_BASE = import.meta.env.VITE_API_URL;
 
   useEffect(() => {
@@ -40,7 +41,7 @@ export const TransactionProvider = ({ children }) => {
         .then(data => setTransactions(data))
         .catch(err => console.error('Error fetching transactions:', err));
     }
-  }, [user, token, API_BASE]);
+  }, [user, token, API_BASE, transactionUpdated]); // Include transactionUpdated as a dependency
 
   const handleAddTransaction = async (transactionData) => {
     try {
@@ -57,7 +58,7 @@ export const TransactionProvider = ({ children }) => {
         if (res.ok) {
           const newTransaction = await res.json();
           setTransactions(prev => [...prev, newTransaction]);
-          fetchBudgets(); // Call fetchBudgets after successful add
+          setTransactionUpdated(prev => !prev); // Toggle the state to trigger re-fetch in Budgets
         } else {
           alert('Error creating transaction');
         }
@@ -82,7 +83,7 @@ export const TransactionProvider = ({ children }) => {
         });
         if (res.ok) {
           setTransactions(prev => prev.filter(t => t.id !== transactionId));
-          fetchBudgets(); // Call fetchBudgets after successful delete
+          setTransactionUpdated(prev => !prev); // Toggle the state
         } else {
           alert('Error deleting transaction');
         }
@@ -119,7 +120,7 @@ export const TransactionProvider = ({ children }) => {
           const newTransaction = await res.json();
           setTransactions(prev => prev.map(t => (t.id === newTransaction.id ? newTransaction : t)));
           setEditingTransaction(null);
-          fetchBudgets(); // Call fetchBudgets after successful update
+          setTransactionUpdated(prev => !prev); // Toggle the state
         } else {
           alert('Error updating transaction');
         }
@@ -145,8 +146,8 @@ export const TransactionProvider = ({ children }) => {
 
         if (res.ok) {
           setTransactions([]);
-          // After resetting transactions, we need to also reset the budget spending.
-          // We can trigger a backend call for this.
+          setTransactionUpdated(prev => !prev); // Toggle the state
+
           const budgetResetRes = await fetch(`${API_BASE}/api/budgets/resetBudgetSpending/${user.id}`, {
             method: 'POST', // Or PUT, depending on your backend route
             headers: {
@@ -155,9 +156,7 @@ export const TransactionProvider = ({ children }) => {
             credentials: 'include',
           });
 
-          if (budgetResetRes.ok) {
-            fetchBudgets(); // Refetch budgets to update the UI
-          } else {
+          if (!budgetResetRes.ok) {
             alert('Failed to reset budget spending.');
             console.error('Failed to reset budget spending:', budgetResetRes);
           }
@@ -190,3 +189,5 @@ export const TransactionProvider = ({ children }) => {
     </TransactionContext.Provider>
   );
 };
+
+export default TransactionContext;
