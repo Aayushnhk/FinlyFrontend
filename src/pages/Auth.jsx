@@ -88,7 +88,7 @@ function Auth() {
       const data = await response.json();
 
       if (response.ok) {
-        console.log(isLogin ? "Login successful:" : "Signup successful:", data);
+        console.log(isLogin ? "Login successful:" : "Signup successful:");
         if (isLogin && data.token && data.userId) {
           localStorage.setItem("authToken", data.token);
           localStorage.setItem("userId", data.userId);
