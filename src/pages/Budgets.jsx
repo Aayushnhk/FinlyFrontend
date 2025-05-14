@@ -32,7 +32,6 @@ function Budgets() {
     fetchBudgets();
   }, []);
 
-  // Re-calculate spent amount whenever transactions change
   const spentAmounts = React.useMemo(() => {
     if (!budgets || !transactions) {
       return {};
@@ -43,7 +42,7 @@ function Budgets() {
       const budgetEndDate = parse(budget.endDate, "dd/MM/yyyy", new Date());
       const spent = transactions
         .filter(
-          (t) => t.type === "expense" && t.category?.id === budget.category.id
+          (t) => t.type === "expense" && t.category?.id === budget?.category?.id
         )
         .filter((t) => {
           const transactionDate = new Date(t.date);
@@ -199,7 +198,7 @@ function Budgets() {
         </div>
 
         <div className="mt-6 flex flex-col md:flex-row items-start gap-8">
-          <div className="bg-gray-900 shadow-md rounded-xl p-6 w-full md:w-1/3">
+          <div className="bg-gray-900 shadow-md rounded-lg p-6 border border-gray-700">
             <h3 className="text-lg font-medium text-white mb-4">
               {editBudgetId ? "Edit Budget" : "Add New Budget"}
             </h3>
@@ -295,8 +294,17 @@ function Budgets() {
                 budgets.map((budget) => {
                   const spentAmount = calculateSpentAmount(budget);
                   const remainingAmount = budget.amount - spentAmount;
-                  const progressPercentage =
-                    (spentAmount / budget.amount) * 100;
+                  const progressPercentage = Math.min(
+                    (spentAmount / budget.amount) * 100,
+                    100 // Ensure it doesn't exceed 100% for visual purposes
+                  );
+
+                  const progressBarColor =
+                    spentAmount > budget.amount ? "bg-red-500" : "bg-teal-500";
+                  const remainingAmountTextColor =
+                    spentAmount > budget.amount
+                      ? "text-red-500"
+                      : "text-green-300";
 
                   return (
                     <div
@@ -336,9 +344,9 @@ function Budgets() {
                           </span>
                         </p>
 
-                        <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2">
+                        <div className="w-full bg-gray-700 rounded-full h-2.5 mb-2 overflow-hidden">
                           <div
-                            className="bg-teal-500 h-2.5 rounded-full"
+                            className={`${progressBarColor} h-2.5 rounded-full`}
                             style={{
                               width: `${progressPercentage}%`,
                             }}
@@ -348,19 +356,25 @@ function Budgets() {
                         <div className="flex justify-between text-sm text-gray-400">
                           <div>
                             Spent:{" "}
-                            <span className="text-yellow-300">
+                            <span
+                              className={
+                                spentAmount > budget.amount
+                                  ? "text-red-500"
+                                  : "text-yellow-300"
+                              }
+                            >
                               ₹{spentAmount.toLocaleString()}
                             </span>
                           </div>
                           <div>
                             Remaining:{" "}
-                            <span className="text-green-300">
+                            <span className={remainingAmountTextColor}>
                               ₹{remainingAmount.toLocaleString()}
                             </span>
                           </div>
                           <div>
                             Budget:{" "}
-                            <span className="text-blue-300">
+                            <span className="text-blue-400">
                               ₹{budget.amount.toLocaleString()}
                             </span>
                           </div>

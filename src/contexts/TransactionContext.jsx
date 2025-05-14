@@ -1,7 +1,7 @@
 // src/contexts/TransactionContext.jsx
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from './AuthContext';
-import { useBudgets } from './BudgetContext'; // Import the budget context
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import { useBudgets } from "./BudgetContext"; // Import the budget context
 
 const TransactionContext = createContext();
 export const useTransactions = () => useContext(TransactionContext);
@@ -21,11 +21,11 @@ export const TransactionProvider = ({ children }) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        credentials: 'include',
+        credentials: "include",
       })
-        .then(res => res.json())
-        .then(data => setCategories(data))
-        .catch(err => console.error('Error fetching categories:', err));
+        .then((res) => res.json())
+        .then((data) => setCategories(data))
+        .catch((err) => console.error("Error fetching categories:", err));
     }
   }, [token, API_BASE]);
 
@@ -35,64 +35,78 @@ export const TransactionProvider = ({ children }) => {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-        credentials: 'include',
+        credentials: "include",
       })
-        .then(res => res.json())
-        .then(data => setTransactions(data))
-        .catch(err => console.error('Error fetching transactions:', err));
+        .then((res) => res.json())
+        .then((data) => setTransactions(data))
+        .catch((err) => console.error("Error fetching transactions:", err));
     }
   }, [user, token, API_BASE, transactionUpdated]); // Include transactionUpdated as a dependency
 
   const handleAddTransaction = async (transactionData) => {
     try {
       if (user?.id && token) {
-        const res = await fetch(`${API_BASE}/api/transactions/createTransaction`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: 'include',
-          body: JSON.stringify(transactionData),
-        });
+        const res = await fetch(
+          `${API_BASE}/api/transactions/createTransaction`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify(transactionData),
+          }
+        );
         if (res.ok) {
           const newTransaction = await res.json();
-          setTransactions(prev => [...prev, newTransaction]);
-          setTransactionUpdated(prev => !prev); // Toggle the state to trigger re-fetch in Budgets
+          setTransactions((prev) => [...prev, newTransaction]);
+          setTransactionUpdated((prev) => !prev); // Toggle the state to trigger re-fetch in Budgets
+          return { success: true, data: newTransaction }; // Return success and data
         } else {
-          alert('Error creating transaction');
+          const errorData = await res.json();
+          return {
+            success: false,
+            error: errorData.error || "Failed to create transaction",
+          }; // Return failure and the error message
         }
       } else {
-        alert('User ID or token not available');
+        return { success: false, error: "User ID or token not available" };
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error creating transaction');
+      console.error("Error:", error);
+      return {
+        success: false,
+        error: error.message || "An unexpected error occurred",
+      };
     }
   };
 
   const handleDeleteTransaction = async (transactionId) => {
     try {
       if (user?.id && token) {
-        const res = await fetch(`${API_BASE}/api/transactions/deleteTransaction/${transactionId}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: 'include',
-        });
+        const res = await fetch(
+          `${API_BASE}/api/transactions/deleteTransaction/${transactionId}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+          }
+        );
         if (res.ok) {
-          setTransactions(prev => prev.filter(t => t.id !== transactionId));
-          setTransactionUpdated(prev => !prev); // Toggle the state
+          setTransactions((prev) => prev.filter((t) => t.id !== transactionId));
+          setTransactionUpdated((prev) => !prev); // Toggle the state
         } else {
-          alert('Error deleting transaction');
+          alert("Error deleting transaction");
         }
       } else {
-        alert('User ID or token not available');
+        alert("User ID or token not available");
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error deleting transaction');
+      console.error("Error:", error);
+      alert("Error deleting transaction");
     }
   };
 
@@ -107,69 +121,87 @@ export const TransactionProvider = ({ children }) => {
   const handleUpdateTransaction = async (updatedTransaction) => {
     try {
       if (user?.id && token) {
-        const res = await fetch(`${API_BASE}/api/transactions/editTransaction/${updatedTransaction.id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: 'include',
-          body: JSON.stringify(updatedTransaction),
-        });
+        const res = await fetch(
+          `${API_BASE}/api/transactions/editTransaction/${updatedTransaction.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            credentials: "include",
+            body: JSON.stringify(updatedTransaction),
+          }
+        );
         if (res.ok) {
-          const newTransaction = await res.json();
-          setTransactions(prev => prev.map(t => (t.id === newTransaction.id ? newTransaction : t)));
+          const updatedData = await res.json();
+          setTransactions((prev) =>
+            prev.map((t) => (t.id === updatedData.id ? updatedData : t))
+          );
           setEditingTransaction(null);
-          setTransactionUpdated(prev => !prev); // Toggle the state
+          setTransactionUpdated((prev) => !prev); // Toggle the state
+          return { success: true, data: updatedData };
         } else {
-          alert('Error updating transaction');
+          const errorData = await res.json();
+          return {
+            success: false,
+            error: errorData.error || "Failed to update transaction",
+          };
         }
       } else {
-        alert('User ID or token not available');
+        return { success: false, error: "User ID or token not available" };
       }
     } catch (error) {
-      console.error('Error:', error);
-      alert('Error updating transaction');
+      console.error("Error:", error);
+      return {
+        success: false,
+        error: error.message || "An unexpected error occurred",
+      };
     }
   };
 
   const resetTransactions = async () => {
     try {
       if (user?.id && token) {
-        const res = await fetch(`${API_BASE}/api/transactions/resetTransactions/${user.id}`, {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          credentials: 'include',
-        });
-
-        if (res.ok) {
-          setTransactions([]);
-          setTransactionUpdated(prev => !prev); // Toggle the state
-
-          const budgetResetRes = await fetch(`${API_BASE}/api/budgets/resetBudgetSpending/${user.id}`, {
-            method: 'POST', // Or PUT, depending on your backend route
+        const res = await fetch(
+          `${API_BASE}/api/transactions/resetTransactions/${user.id}`,
+          {
+            method: "DELETE",
             headers: {
               Authorization: `Bearer ${token}`,
             },
-            credentials: 'include',
-          });
+            credentials: "include",
+          }
+        );
+
+        if (res.ok) {
+          setTransactions([]);
+          setTransactionUpdated((prev) => !prev); // Toggle the state
+
+          const budgetResetRes = await fetch(
+            `${API_BASE}/api/budgets/resetBudgetSpending/${user.id}`,
+            {
+              method: "POST", // Or PUT, depending on your backend route
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+              credentials: "include",
+            }
+          );
 
           if (!budgetResetRes.ok) {
-            alert('Failed to reset budget spending.');
-            console.error('Failed to reset budget spending:', budgetResetRes);
+            alert("Failed to reset budget spending.");
+            console.error("Failed to reset budget spending:", budgetResetRes);
           }
         } else {
-          alert('Failed to reset transactions');
+          alert("Failed to reset transactions");
         }
       }
     } catch (error) {
-      console.error('Error resetting transactions:', error);
-      alert('Error resetting transactions');
+      console.error("Error resetting transactions:", error);
+      alert("Error resetting transactions");
     }
   };
-
 
   return (
     <TransactionContext.Provider
@@ -185,7 +217,7 @@ export const TransactionProvider = ({ children }) => {
         resetTransactions, // added to context
       }}
     >
-      {children}
+            {children}   {" "}
     </TransactionContext.Provider>
   );
 };

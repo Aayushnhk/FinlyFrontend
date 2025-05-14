@@ -47,7 +47,7 @@ function Dashboard() {
   const handleReset = () => {
     if (transactions.length > 0) {
       resetTransactions();
-      setResetAlertMessage("Your dashboard overview has been reset.");
+      setResetAlertMessage("Financial data reset successfully");
       setShowResetAlert(true);
       setTimeout(() => setShowResetAlert(false), 3000);
     } else {
