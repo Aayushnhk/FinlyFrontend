@@ -296,7 +296,7 @@ function Budgets() {
                   const remainingAmount = budget.amount - spentAmount;
                   const progressPercentage = Math.min(
                     (spentAmount / budget.amount) * 100,
-                    100 // Ensure it doesn't exceed 100% for visual purposes
+                    100
                   );
 
                   const progressBarColor =

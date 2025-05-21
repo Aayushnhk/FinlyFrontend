@@ -14,7 +14,7 @@ export default function Transactions() {
     editingTransaction,
     handleEditTransaction,
     clearEditingTransaction,
-    balance, // Assuming balance is also provided by TransactionContext
+    balance,
   } = useTransactions();
   const { categories } = useCategories();
   const { fetchBudgets } = useBudgets();
@@ -95,7 +95,7 @@ export default function Transactions() {
       amount: parsedAmount,
       date: editingTransaction
         ? editingTransaction.date
-        : new Date().toISOString(), // Keep original date on edit
+        : new Date().toISOString(),
     };
 
     if (type === "expense") {
@@ -114,7 +114,7 @@ export default function Transactions() {
 
     let result;
     if (editingTransaction) {
-      transactionData.id = editingTransaction.id; // Add ID for update
+      transactionData.id = editingTransaction.id;
       result = await handleUpdateTransaction(transactionData);
       if (result && result.success) {
         setAlert({

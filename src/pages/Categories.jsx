@@ -1,12 +1,11 @@
-// src/pages/Categories.jsx
-import React, { useState } from 'react';
-import { useCategories } from '../contexts/CategoryContext';
-import Alert from '../components/Alert'; // Assuming Alert.jsx is in the components folder
-import { FaTrashAlt } from 'react-icons/fa'; // Import the trash icon
+import React, { useState } from "react";
+import { useCategories } from "../contexts/CategoryContext";
+import Alert from "../components/Alert";
+import { FaTrashAlt } from "react-icons/fa";
 
 function CategoryList({ categories, onDeleteCategory }) {
   const capitalizeFirstLetter = (str) => {
-    if (!str) return '';
+    if (!str) return "";
     return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
   };
 
@@ -24,7 +23,7 @@ function CategoryList({ categories, onDeleteCategory }) {
             onClick={() => onDeleteCategory(category.id)}
             className="flex items-center gap-2 bg-red-600/90 hover:bg-red-700 text-white text-sm px-3 py-1.5 rounded-md transition-all duration-150 cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2 focus:ring-offset-gray-800"
           >
-            <FaTrashAlt className="h-3.5 w-3.5" /> {/* Use FaTrashAlt here */}
+            <FaTrashAlt className="h-3.5 w-3.5" /> 
             <span>Delete</span>
           </button>
         </li>
@@ -39,8 +38,10 @@ function Categories() {
 
   const handleDeleteCategory = (id) => {
     deleteCategory(id);
-    setAlert({ type: 'categoryDeleted', message: 'Category deleted successfully.' });
-    // Optionally, set a timeout to clear the alert
+    setAlert({
+      type: "categoryDeleted",
+      message: "Category deleted successfully.",
+    });
     setTimeout(() => setAlert(null), 3000);
   };
 
@@ -64,12 +65,13 @@ function Categories() {
 
         {categories.length === 0 ? (
           <div className="bg-gray-800/50 rounded-lg border border-dashed border-gray-700 p-8 text-center">
-            <p className="text-gray-400">
-              No categories created yet
-            </p>
+            <p className="text-gray-400">No categories created yet</p>
           </div>
         ) : (
-          <CategoryList categories={categories} onDeleteCategory={handleDeleteCategory} />
+          <CategoryList
+            categories={categories}
+            onDeleteCategory={handleDeleteCategory}
+          />
         )}
       </div>
     </div>

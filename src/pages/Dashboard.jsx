@@ -77,16 +77,22 @@ function Dashboard() {
 
   if (!isAuthenticated || !user) {
     return (
-      <div className={`${bgColor}  flex items-center justify-center p-4 relative overflow-hidden`}>
+      <div
+        className={`${bgColor}  flex items-center justify-center p-4 relative overflow-hidden`}
+      >
         <div
           className={`max-w-md w-full p-8 rounded-xl ${cardBg} ${cardShadow} text-center relative z-10 border ${borderColor} transition-all duration-300 hover:shadow-xl`}
         >
           <div className="mb-8">
             <div className="relative inline-block">
-              <FaChartLine className={`text-6xl mx-auto mb-2 ${accentColor} animate-pulse`} />
+              <FaChartLine
+                className={`text-6xl mx-auto mb-2 ${accentColor} animate-pulse`}
+              />
               <div className="absolute -inset-4 rounded-full bg-teal-400/10 animate-ping opacity-20"></div>
             </div>
-            <h1 className={`text-4xl font-bold mb-4 animate-gradient bg-gradient-to-r from-white to-teal-400 bg-clip-text text-transparent bg-300% animate-shimmer`}>
+            <h1
+              className={`text-4xl font-bold mb-4 animate-gradient bg-gradient-to-r from-white to-teal-400 bg-clip-text text-transparent bg-300% animate-shimmer`}
+            >
               Welcome to Finly
             </h1>
             <p className={`text-lg ${textColor} mb-8`}>
@@ -106,7 +112,13 @@ function Dashboard() {
                 <div className={`w-full border-t ${borderColor}`}></div>
               </div>
               <div className="relative flex justify-center">
-                <span className={`px-2 ${textColor} ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} text-sm`}>or</span>
+                <span
+                  className={`px-2 ${textColor} ${
+                    isDarkMode ? "bg-gray-800" : "bg-gray-100"
+                  } text-sm`}
+                >
+                  or
+                </span>
               </div>
             </div>
             <Link
@@ -144,7 +156,9 @@ function Dashboard() {
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
             <FaChartLine className={`text-3xl mr-3 ${accentColor}`} />
-            <h1 className={`text-2xl font-bold md-2 ${textColor}`}>Dashboard</h1>
+            <h1 className={`text-2xl font-bold md-2 ${textColor}`}>
+              Dashboard
+            </h1>
           </div>
           <button
             onClick={handleReset}
@@ -171,7 +185,10 @@ function Dashboard() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Income Card */}
-          <Link to="/transactions#income" className={`bg-green-600/80 p-6 rounded-lg ${cardShadow} transition-transform transform hover:scale-105 cursor-pointer`}>
+          <Link
+            to="/transactions#income"
+            className={`bg-green-600/80 p-6 rounded-lg ${cardShadow} transition-transform transform hover:scale-105 cursor-pointer`}
+          >
             <div className="flex items-center mb-3 ml-6">
               {" "}
               <div className="p-2 rounded-full bg-green-500/30 mr-3">
@@ -189,15 +206,16 @@ function Dashboard() {
           </Link>
 
           {/* Expense Card */}
-          <Link to="/transactions#expense" className={`bg-red-600/80 p-6 rounded-lg ${cardShadow} transition-transform transform hover:scale-105 cursor-pointer`}>
+          <Link
+            to="/transactions#expense"
+            className={`bg-red-600/80 p-6 rounded-lg ${cardShadow} transition-transform transform hover:scale-105 cursor-pointer`}
+          >
             <div className="flex items-center mb-3 ml-6">
               {" "}
               <div className="p-2 rounded-full bg-red-500/30 mr-3">
                 <FaMoneyCheckAlt className="text-xl text-white" />
               </div>
-              <h2 className={`text-2xl font-bold ${textColor}`}>
-                Expenses
-              </h2>
+              <h2 className={`text-2xl font-bold ${textColor}`}>Expenses</h2>
             </div>
             <div className="flex items-center pl-8">
               {" "}
@@ -210,7 +228,10 @@ function Dashboard() {
           </Link>
 
           {/* Balance Card */}
-          <Link to="/transactions" className={`bg-blue-600/80 p-6 rounded-lg ${cardShadow} transition-transform transform hover:scale-105 cursor-pointer`}>
+          <Link
+            to="/transactions"
+            className={`bg-blue-600/80 p-6 rounded-lg ${cardShadow} transition-transform transform hover:scale-105 cursor-pointer`}
+          >
             <div className="flex items-center mb-3 ml-6">
               {" "}
               <div className="p-2 rounded-full bg-blue-800/30 mr-3">
