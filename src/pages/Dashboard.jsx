@@ -28,7 +28,7 @@ function Dashboard() {
     const months = {};
     transactions.forEach(t => {
       const date = new Date(t.date);
-      const key = date.toLocaleString("default", { month: "short", year: "2-digit" });
+      const key = date.toLocaleString("default", { month: "short", year: "numeric" });
       if (!months[key]) months[key] = { month: key, income: 0, expense: 0 };
       if (t.type === "income") months[key].income += t.amount;
       else months[key].expense += t.amount;

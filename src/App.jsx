@@ -22,15 +22,13 @@ function App() {
           <TransactionProvider>
             <Router>
               <Navbar />
-              <div className="App px-4 py-6">
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/categories" element={<Categories />} />
-                  <Route path="/transactions" element={<Transactions />} />
-                  <Route path="/budgets" element={<Budgets />} />
-                  <Route path="/auth" element={<Auth />} />
-                </Routes>
-              </div>
+              <Routes>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/categories" element={<Categories />} />
+                <Route path="/transactions" element={<Transactions />} />
+                <Route path="/budgets" element={<Budgets />} />
+                <Route path="/auth" element={<Auth />} />
+              </Routes>
             </Router>
           </TransactionProvider>
         </BudgetProvider>

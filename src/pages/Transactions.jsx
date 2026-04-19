@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTransactions } from "../contexts/TransactionContext";
 import { useCategories } from "../contexts/CategoryContext";
 import { useBudgets } from "../contexts/BudgetContext";
@@ -13,9 +13,15 @@ export default function Transactions() {
   const { fetchBudgets } = useBudgets();
 
   const [formData, setFormData] = useState({
-    type: "income", amount: "", categoryId: "", incomeSourceName: "", date: new Date().toISOString().split("T")[0],
+    type: "income", amount: "", categoryId: "", incomeSourceName: "",
+    date: new Date().toISOString().split("T")[0],
   });
   const [alert, setAlert] = useState(null);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState("all");
+  const [filterCategory, setFilterCategory] = useState("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
 
   const capitalize = useCallback((str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "", []);
 
@@ -80,8 +86,45 @@ export default function Transactions() {
     showAlert("Transaction deleted.", "#f87171");
   };
 
-  const incomeTransactions = transactions.filter(t => t.type === "income");
-  const expenseTransactions = transactions.filter(t => t.type === "expense");
+  // Filtered transactions
+  const filtered = useMemo(() => {
+    return transactions.filter(t => {
+      const name = t.type === "income"
+        ? (t.incomeSourceName || t.name || "").toLowerCase()
+        : (t.category?.name || "").toLowerCase();
+      const matchSearch = !search || name.includes(search.toLowerCase());
+      const matchType = filterType === "all" || t.type === filterType;
+      const matchCategory = filterCategory === "all" || t.categoryId === filterCategory;
+      const tDate = new Date(t.date);
+      const matchFrom = !dateFrom || tDate >= new Date(dateFrom);
+      const matchTo = !dateTo || tDate <= new Date(dateTo);
+      return matchSearch && matchType && matchCategory && matchFrom && matchTo;
+    });
+  }, [transactions, search, filterType, filterCategory, dateFrom, dateTo]);
+
+  const incomeTransactions = filtered.filter(t => t.type === "income");
+  const expenseTransactions = filtered.filter(t => t.type === "expense");
+
+  // CSV Export
+  const exportCSV = () => {
+    const rows = [
+      ["Date", "Type", "Source/Category", "Amount"],
+      ...filtered.map(t => [
+        new Date(t.date).toLocaleDateString("en-IN"),
+        t.type,
+        t.type === "income" ? (t.incomeSourceName || t.name || "") : (t.category?.name || ""),
+        t.amount,
+      ])
+    ];
+    const csv = rows.map(r => r.join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "finly-transactions.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const inputStyle = {
     width: "100%", background: "#0f0f10",
@@ -95,6 +138,13 @@ export default function Transactions() {
     fontFamily: "system-ui,sans-serif", fontSize: "0.68rem",
     letterSpacing: "0.1em", textTransform: "uppercase",
     color: "#6b6860", display: "block", marginBottom: "0.4rem",
+  };
+
+  const filterInputStyle = {
+    background: "#0f0f10", border: "1px solid rgba(255,255,255,0.08)",
+    padding: "0.5rem 0.8rem", color: "#e2ddd6",
+    fontFamily: "system-ui,sans-serif", fontSize: "0.78rem",
+    outline: "none",
   };
 
   return (
@@ -112,13 +162,23 @@ export default function Transactions() {
       )}
 
       <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-        <div style={{ marginBottom: "2.5rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "1.5rem" }}>
-          <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b6860", marginBottom: "0.5rem" }}>
-            income & expenses
+        <div style={{ marginBottom: "2.5rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1rem" }}>
+          <div>
+            <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b6860", marginBottom: "0.5rem" }}>
+              income & expenses
+            </div>
+            <h1 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.8rem,3vw,2.2rem)", fontWeight: 400 }}>
+              Transactions
+            </h1>
           </div>
-          <h1 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.8rem,3vw,2.2rem)", fontWeight: 400 }}>
-            Transactions
-          </h1>
+          <button onClick={exportCSV} style={{
+            background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+            color: "#6b6860", fontFamily: "system-ui,sans-serif",
+            fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase",
+            padding: "0.55rem 1.2rem", cursor: "pointer",
+          }}>
+            export csv ↓
+          </button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "2rem" }}>
@@ -129,7 +189,6 @@ export default function Transactions() {
               {editingTransaction ? "edit transaction" : "add transaction"}
             </div>
             <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-
               <div>
                 <label style={labelStyle}>type</label>
                 <select name="type" value={formData.type} onChange={e => setFormData(p => ({ ...p, type: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
@@ -187,16 +246,54 @@ export default function Transactions() {
           </div>
 
           {/* Transaction lists */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+
+            {/* Filters */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b6860" }}>
+                filter & search
+              </div>
+              <input
+                type="text"
+                placeholder="search by name or category..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ ...filterInputStyle, width: "100%" }}
+              />
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <select value={filterType} onChange={e => setFilterType(e.target.value)} style={{ ...filterInputStyle, flex: 1 }}>
+                  <option value="all">all types</option>
+                  <option value="income">income only</option>
+                  <option value="expense">expenses only</option>
+                </select>
+                <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} style={{ ...filterInputStyle, flex: 1 }}>
+                  <option value="all">all categories</option>
+                  {categories.map(c => <option key={c.id} value={c.id}>{capitalize(c.name)}</option>)}
+                </select>
+              </div>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} style={{ ...filterInputStyle, flex: 1, colorScheme: "dark" }} />
+                <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} style={{ ...filterInputStyle, flex: 1, colorScheme: "dark" }} />
+              </div>
+              {(search || filterType !== "all" || filterCategory !== "all" || dateFrom || dateTo) && (
+                <button onClick={() => { setSearch(""); setFilterType("all"); setFilterCategory("all"); setDateFrom(""); setDateTo(""); }} style={{
+                  background: "transparent", border: "none", color: "#f87171",
+                  fontFamily: "system-ui,sans-serif", fontSize: "0.72rem",
+                  letterSpacing: "0.06em", cursor: "pointer", textAlign: "left", padding: 0,
+                }}>
+                  clear filters ✕
+                </button>
+              )}
+            </div>
 
             {/* Income */}
             <div>
               <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#14b8a6", marginBottom: "0.8rem" }}>
-                income
+                income ({incomeTransactions.length})
               </div>
               {incomeTransactions.length === 0 ? (
                 <div style={{ padding: "1.5rem", border: "1px solid rgba(255,255,255,0.04)", color: "#3a3835", fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", textAlign: "center" }}>
-                  no income yet
+                  no income transactions
                 </div>
               ) : (
                 <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
@@ -225,11 +322,11 @@ export default function Transactions() {
             {/* Expenses */}
             <div>
               <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#f87171", marginBottom: "0.8rem" }}>
-                expenses
+                expenses ({expenseTransactions.length})
               </div>
               {expenseTransactions.length === 0 ? (
                 <div style={{ padding: "1.5rem", border: "1px solid rgba(255,255,255,0.04)", color: "#3a3835", fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", textAlign: "center" }}>
-                  no expenses yet
+                  no expense transactions
                 </div>
               ) : (
                 <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
