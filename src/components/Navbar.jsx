@@ -1,227 +1,131 @@
-import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import {
-  FaThList,
-  FaExchangeAlt,
-  FaWallet,
-  FaChartLine,
-  FaSignOutAlt,
-} from "react-icons/fa";
+import React, { useState } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { useState, useEffect } from "react";
-import Alert from "./Alert";
-import {
-  Disclosure,
-  DisclosureButton,
-  DisclosurePanel,
-} from "@headlessui/react";
 
-const navigation = [
-  { name: "Categories", href: "/categories", current: false, icon: FaThList },
-  {
-    name: "Transactions",
-    href: "/transactions",
-    current: false,
-    icon: FaExchangeAlt,
-  },
-  { name: "Budgets", href: "/budgets", current: false, icon: FaWallet },
+const navLinks = [
+  { name: "Categories", href: "/categories" },
+  { name: "Transactions", href: "/transactions" },
+  { name: "Budgets", href: "/budgets" },
 ];
-
-function classNames(...classes) {
-  return classes.filter(Boolean).join(" ");
-}
 
 function Navbar() {
   const { isAuthenticated, logout } = useAuth();
-  const [isLoggedIn, setIsLoggedIn] = useState(isAuthenticated);
   const navigate = useNavigate();
-  const [logoutAlertMessage, setLogoutAlertMessage] = useState("");
-
-  useEffect(() => {
-    setIsLoggedIn(isAuthenticated);
-  }, [isAuthenticated]);
+  const location = useLocation();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
-    logout(); // Call the logout function from AuthContext
-    navigate("/"); // Navigate to the home page after logout
+    logout();
+    navigate("/");
+    setMenuOpen(false);
   };
 
   return (
-    <Disclosure as="nav" className="bg-black-900 border-b border-gray-700">
-      {({ open }) => (
-        <>
-          {logoutAlertMessage && (
-            <Alert
-              message={logoutAlertMessage}
-              type="logout"
-              onClose={() => setLogoutAlertMessage("")}
-            />
+    <nav style={{
+      background: "#0a0a0b",
+      borderBottom: "1px solid rgba(255,255,255,0.06)",
+      position: "sticky", top: 0, zIndex: 100,
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "1rem clamp(1.5rem,4vw,2.5rem)",
+        maxWidth: "1200px", margin: "0 auto",
+      }}>
+        {/* Logo */}
+        <Link to="/" style={{ textDecoration: "none", display: "flex", alignItems: "baseline", gap: "6px" }}>
+          <span style={{ fontFamily: "system-ui,sans-serif", fontSize: "1rem", letterSpacing: "0.15em", textTransform: "uppercase", color: "#e2ddd6", fontWeight: 500 }}>
+            Finly
+          </span>
+          <span style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.65rem", color: "#6b6860", letterSpacing: "0.08em" }}>
+            personal finance
+          </span>
+        </Link>
+
+        {/* Desktop nav */}
+        <div style={{ display: "flex", alignItems: "center", gap: "2rem" }} className="desktop-nav">
+          {isAuthenticated && navLinks.map(link => (
+            <Link key={link.href} to={link.href} style={{
+              fontFamily: "system-ui,sans-serif", fontSize: "0.78rem",
+              letterSpacing: "0.05em", textDecoration: "none",
+              color: location.pathname === link.href ? "#e2ddd6" : "#6b6860",
+              transition: "color 0.2s",
+            }}>
+              {link.name.toLowerCase()}
+            </Link>
+          ))}
+
+          {isAuthenticated ? (
+            <button onClick={handleLogout} style={{
+              fontFamily: "system-ui,sans-serif", fontSize: "0.72rem",
+              letterSpacing: "0.08em", textTransform: "uppercase",
+              background: "transparent", color: "#6b6860",
+              padding: "0.45rem 1.1rem", border: "1px solid rgba(255,255,255,0.08)",
+              cursor: "pointer",
+            }}>sign out</button>
+          ) : (
+            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+              <Link to="/auth?mode=login" style={{
+                fontFamily: "system-ui,sans-serif", fontSize: "0.78rem",
+                letterSpacing: "0.05em", color: "#6b6860", textDecoration: "none",
+              }}>sign in</Link>
+              <Link to="/auth?mode=signup" style={{
+                fontFamily: "system-ui,sans-serif", fontSize: "0.72rem",
+                letterSpacing: "0.08em", textTransform: "uppercase",
+                background: "#14b8a6", color: "#0a0a0b",
+                padding: "0.45rem 1.1rem", textDecoration: "none",
+              }}>get started</Link>
+            </div>
           )}
-          <div className="mx-auto max-w-7xl px-2 sm:px-6 lg:px-8">
-            <div className="relative flex h-16 items-center justify-between">
-              {/* Logo on the left */}
-              <div className="flex flex-shrink-0 items-center">
-                <Link
-                  to="/"
-                  className="flex items-center font-bold text-white hover:text-teal-400 transition-colors text-xl"
-                >
-                  <FaChartLine className="mr-2 text-teal-400 text-2xl" />
-                  <span>Finly</span>
-                </Link>
-              </div>
+        </div>
 
-              {/* Centered navigation items - Hidden on mobile */}
-              <div className="hidden sm:block absolute left-1/2 transform -translate-x-1/2">
-                <div className="flex space-x-4">
-                  {isLoggedIn &&
-                    navigation.map((item) => (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        className={classNames(
-                          "rounded-md px-3 py-2 text-sm font-medium flex items-center gap-2",
-                          "text-gray-300 hover:text-teal-400 transition-colors"
-                        )}
-                        aria-current={
-                          window.location.pathname === item.href
-                            ? "page"
-                            : undefined
-                        }
-                      >
-                        <item.icon className="h-5 w-5 text-teal-400" />
-                        {item.name}
-                      </Link>
-                    ))}
-                </div>
-              </div>
+        {/* Mobile hamburger */}
+        <button onClick={() => setMenuOpen(!menuOpen)} className="mobile-btn" style={{
+          display: "none", background: "none", border: "none",
+          color: "#e2ddd6", fontSize: "1.2rem", cursor: "pointer", padding: "0.25rem",
+        }}>
+          {menuOpen ? "✕" : "☰"}
+        </button>
+      </div>
 
-              {/* Mobile Menu Button and Logout/Auth Buttons Container */}
-              <div className="flex items-center pr-2 sm:static sm:inset-auto sm:ml-6 sm:pr-0">
-                <div className="flex items-center">
-                  {/* Mobile Menu Button - Only show when logged in */}
-                  {isLoggedIn && (
-                    <div className="sm:hidden ml-2">
-                      <DisclosureButton className="group relative inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:text-teal-400 focus:outline-none transition-colors">
-                        <span className="absolute -inset-0.5" />
-                        <span className="sr-only">Open main menu</span>
-                        {open ? (
-                          <svg
-                            className="block h-6 w-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth="1.5"
-                            stroke="currentColor"
-                            aria-hidden="true"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            className="block h-6 w-6"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            strokeWidth="1.5"
-                            stroke="currentColor"
-                            aria-hidden="true"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                            />
-                          </svg>
-                        )}
-                      </DisclosureButton>
-                    </div>
-                  )}
-                  {isLoggedIn ? (
-                    <button
-                      onClick={handleLogout}
-                      className="hidden sm:flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium cursor-pointer text-gray-300 hover:text-teal-400 transition-colors ml-2 sm:ml-0"
-                    >
-                      <FaSignOutAlt className="h-5 w-5 text-teal-400" />
-                      <span className="hidden sm:inline">Logout</span>
-                    </button>
-                  ) : (
-                    <div className="flex space-x-4">
-                      <Link
-                        to="/auth?mode=login"
-                        className="text-gray-300 hover:text-teal-400 rounded-md px-3 py-2 text-sm font-medium transition-colors"
-                      >
-                        Login
-                      </Link>
-                      <Link
-                        to="/auth?mode=signup"
-                        className="bg-teal-500 hover:bg-teal-700 text-white rounded-md px-3 py-2 text-sm font-medium transition-colors"
-                      >
-                        Sign Up
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile menu */}
-          <DisclosurePanel className="sm:hidden">
-            <div className="space-y-1 px-2 pt-2 pb-3">
-              {isLoggedIn &&
-                navigation.map((item) => (
-                  <DisclosureButton
-                    key={item.name}
-                    as={Link}
-                    to={item.href}
-                    className={classNames(
-                      "block rounded-md px-3 py-2 text-base font-medium flex items-center gap-2",
-                      "text-gray-300 hover:text-teal-400 transition-colors"
-                    )}
-                    aria-current={
-                      window.location.pathname === item.href
-                        ? "page"
-                        : undefined
-                    }
-                  >
-                    <item.icon className="h-5 w-5 text-teal-400" />
-                    {item.name}
-                  </DisclosureButton>
-                ))}
-              {isLoggedIn && (
-                <DisclosureButton
-                  onClick={handleLogout}
-                  className="w-full text-left block rounded-md px-3 py-2 text-base font-medium cursor-pointer text-gray-300 hover:text-teal-400 transition-colors flex items-center gap-2"
-                >
-                  <FaSignOutAlt className="h-5 w-5 text-teal-400" />
-                  Logout
-                </DisclosureButton>
-              )}
-              {!isLoggedIn && (
-                <>
-                  <DisclosureButton
-                    as={Link}
-                    to="/auth?mode=login"
-                    className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:text-teal-400 transition-colors"
-                  >
-                    Login
-                  </DisclosureButton>
-                  <DisclosureButton
-                    as={Link}
-                    to="/auth?mode=signup"
-                    className="block rounded-md px-3 py-2 text-base font-medium bg-teal-500 hover:bg-teal-700 text-white transition-colors"
-                  >
-                    Sign Up
-                  </DisclosureButton>
-                </>
-              )}
-            </div>
-          </DisclosurePanel>
-        </>
+      {/* Mobile menu */}
+      {menuOpen && (
+        <div style={{
+          borderTop: "1px solid rgba(255,255,255,0.06)",
+          padding: "1rem clamp(1.5rem,4vw,2.5rem)",
+          display: "flex", flexDirection: "column", gap: "1rem",
+          background: "#0a0a0b",
+        }}>
+          {isAuthenticated && navLinks.map(link => (
+            <Link key={link.href} to={link.href} onClick={() => setMenuOpen(false)} style={{
+              fontFamily: "system-ui,sans-serif", fontSize: "0.88rem",
+              color: location.pathname === link.href ? "#e2ddd6" : "#6b6860",
+              textDecoration: "none",
+            }}>
+              {link.name.toLowerCase()}
+            </Link>
+          ))}
+          {isAuthenticated ? (
+            <button onClick={handleLogout} style={{
+              background: "none", border: "none", cursor: "pointer",
+              fontFamily: "system-ui,sans-serif", fontSize: "0.82rem",
+              color: "#6b6860", textAlign: "left", padding: 0,
+            }}>sign out</button>
+          ) : (
+            <>
+              <Link to="/auth?mode=login" onClick={() => setMenuOpen(false)} style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.88rem", color: "#6b6860", textDecoration: "none" }}>sign in</Link>
+              <Link to="/auth?mode=signup" onClick={() => setMenuOpen(false)} style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.88rem", color: "#14b8a6", textDecoration: "none" }}>get started</Link>
+            </>
+          )}
+        </div>
       )}
-    </Disclosure>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .mobile-btn { display: block !important; }
+        }
+      `}</style>
+    </nav>
   );
 }
 

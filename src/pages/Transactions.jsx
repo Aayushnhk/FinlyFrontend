@@ -2,35 +2,22 @@ import { useState, useEffect, useCallback } from "react";
 import { useTransactions } from "../contexts/TransactionContext";
 import { useCategories } from "../contexts/CategoryContext";
 import { useBudgets } from "../contexts/BudgetContext";
-import Alert from "../components/Alert";
-import { FaPencilAlt, FaTrashAlt } from "react-icons/fa";
 
 export default function Transactions() {
   const {
-    transactions,
-    handleAddTransaction,
-    handleUpdateTransaction,
-    handleDeleteTransaction,
-    editingTransaction,
-    handleEditTransaction,
+    transactions, handleAddTransaction, handleUpdateTransaction,
+    handleDeleteTransaction, editingTransaction, handleEditTransaction,
     clearEditingTransaction,
-    balance,
   } = useTransactions();
   const { categories } = useCategories();
   const { fetchBudgets } = useBudgets();
 
   const [formData, setFormData] = useState({
-    type: "income",
-    amount: "",
-    categoryId: "",
-    incomeSourceName: "",
+    type: "income", amount: "", categoryId: "", incomeSourceName: "", date: new Date().toISOString().split("T")[0],
   });
   const [alert, setAlert] = useState(null);
 
-  const capitalizeFirstLetter = useCallback((str) => {
-    if (!str) return "";
-    return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
-  }, []);
+  const capitalize = useCallback((str) => str ? str.charAt(0).toUpperCase() + str.slice(1).toLowerCase() : "", []);
 
   useEffect(() => {
     if (editingTransaction) {
@@ -38,385 +25,235 @@ export default function Transactions() {
         type: editingTransaction.type,
         amount: editingTransaction.amount.toString(),
         categoryId: editingTransaction.categoryId || "",
-        incomeSourceName:
-          editingTransaction.incomeSourceName || editingTransaction.name || "",
+        incomeSourceName: editingTransaction.incomeSourceName || editingTransaction.name || "",
+        date: editingTransaction.date ? new Date(editingTransaction.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
       });
     } else {
-      setFormData({
-        type: "income",
-        amount: "",
-        categoryId: "",
-        incomeSourceName: "",
-      });
+      setFormData({ type: "income", amount: "", categoryId: "", incomeSourceName: "", date: new Date().toISOString().split("T")[0] });
     }
   }, [editingTransaction]);
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prevData) => ({
-      ...prevData,
-      [name]: value,
-    }));
+  const showAlert = (message, color) => {
+    setAlert({ message, color });
+    setTimeout(() => setAlert(null), 3000);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const { type, amount, categoryId, incomeSourceName } = formData;
-
-    if (!amount || !type) {
-      setAlert({ message: "Amount and Type are required!", type: "error" });
-      return;
-    }
-
-    if (type === "expense" && !categoryId) {
-      setAlert({
-        message: "Please select a category for the expense",
-        type: "error",
-      });
-      return;
-    }
-
-    if (type === "income" && !incomeSourceName) {
-      setAlert({ message: "Please provide an Income Source!", type: "error" });
-      return;
-    }
-
+    const { type, amount, categoryId, incomeSourceName, date } = formData;
+    if (!amount || !type) { showAlert("Amount and type are required.", "#f87171"); return; }
+    if (type === "expense" && !categoryId) { showAlert("Please select a category.", "#f87171"); return; }
+    if (type === "income" && !incomeSourceName) { showAlert("Please provide an income source.", "#f87171"); return; }
     const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) {
-      setAlert({
-        message: "Please enter a valid positive amount.",
-        type: "error",
-      });
-      return;
-    }
+    if (isNaN(parsedAmount) || parsedAmount <= 0) { showAlert("Enter a valid positive amount.", "#f87171"); return; }
 
-    const transactionData = {
-      type,
-      amount: parsedAmount,
-      date: editingTransaction
-        ? editingTransaction.date
-        : new Date().toISOString(),
-    };
-
+    const transactionData = { type, amount: parsedAmount, date: new Date(date).toISOString() };
     if (type === "expense") {
       transactionData.categoryId = categoryId;
-      const selectedCategory = categories.find((cat) => cat.id === categoryId);
-      if (selectedCategory) {
-        transactionData.category = {
-          id: selectedCategory.id,
-          name: selectedCategory.name,
-        };
-      }
-    } else if (type === "income") {
+      const selectedCategory = categories.find(c => c.id === categoryId);
+      if (selectedCategory) transactionData.category = { id: selectedCategory.id, name: selectedCategory.name };
+    } else {
       transactionData.incomeSourceName = incomeSourceName;
-      delete transactionData.name;
     }
 
     let result;
     if (editingTransaction) {
       transactionData.id = editingTransaction.id;
       result = await handleUpdateTransaction(transactionData);
-      if (result && result.success) {
-        setAlert({
-          message: "Transaction updated successfully!",
-          type: "success",
-        });
-      } else if (result && result.error) {
-        setAlert({ message: result.error, type: "error" });
-      }
     } else {
       result = await handleAddTransaction(transactionData);
-      if (result && result.success) {
-        setAlert({
-          message: "Transaction added successfully!",
-          type: "transactionAdded",
-        });
-      } else if (result && result.error) {
-        setAlert({ message: result.error, type: "error" });
-      }
     }
 
-    if (result && result.success) {
+    if (result?.success) {
       fetchBudgets();
-      setFormData({
-        type: "income",
-        amount: "",
-        categoryId: "",
-        incomeSourceName: "",
-      });
+      setFormData({ type: "income", amount: "", categoryId: "", incomeSourceName: "", date: new Date().toISOString().split("T")[0] });
       clearEditingTransaction();
+      showAlert(editingTransaction ? "Transaction updated." : "Transaction added.", "#14b8a6");
+    } else if (result?.error) {
+      showAlert(result.error, "#f87171");
     }
   };
 
   const handleDeleteClick = async (id) => {
-    try {
-      await handleDeleteTransaction(id);
-      setAlert({
-        message: "Transaction deleted successfully!",
-        type: "success",
-      });
-      fetchBudgets();
-    } catch (error) {
-      console.error("Error deleting transaction:", error);
-      const errorMessage =
-        error.response?.data?.message || "Error deleting transaction!";
-      setAlert({ message: errorMessage, type: "error" });
-    }
+    await handleDeleteTransaction(id);
+    fetchBudgets();
+    showAlert("Transaction deleted.", "#f87171");
   };
 
-  const incomeTransactions = transactions.filter((t) => t.type === "income");
-  const expenseTransactions = transactions.filter((t) => t.type === "expense");
+  const incomeTransactions = transactions.filter(t => t.type === "income");
+  const expenseTransactions = transactions.filter(t => t.type === "expense");
 
-  const handleEditClick = (transaction) => {
-    handleEditTransaction(transaction);
+  const inputStyle = {
+    width: "100%", background: "#0f0f10",
+    border: "1px solid rgba(255,255,255,0.08)",
+    padding: "0.75rem 1rem", color: "#e2ddd6",
+    fontFamily: "system-ui,sans-serif", fontSize: "0.85rem",
+    outline: "none", boxSizing: "border-box",
   };
 
-  const getCategoryName = (transaction) => {
-    if (transaction.category?.name) return transaction.category.name;
-    if (transaction.categoryId) {
-      const category = categories.find(
-        (cat) => cat.id === transaction.categoryId
-      );
-      return category?.name || "Uncategorized";
-    }
-    return "Uncategorized";
+  const labelStyle = {
+    fontFamily: "system-ui,sans-serif", fontSize: "0.68rem",
+    letterSpacing: "0.1em", textTransform: "uppercase",
+    color: "#6b6860", display: "block", marginBottom: "0.4rem",
   };
 
   return (
-    <div className="container mx-auto p-2 mt-16 text-white">
-      <div className="mb-4">
-        <h1 className="text-3xl font-semibold text-teal-500 mb-2">
-          Transactions
-        </h1>
-        <p className="text-gray-400 text-md">
-          Manage and track your financial transactions, recording both income
-          and expenses
-        </p>
-      </div>
+    <div style={{ background: "#0a0a0b", minHeight: "100vh", color: "#e2ddd6", padding: "clamp(2rem,5vw,4rem) clamp(1.5rem,4vw,3rem)" }}>
 
       {alert && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md">
-          <Alert
-            message={alert.message}
-            type={alert.type}
-            onClose={() => setAlert(null)}
-          />
+        <div style={{
+          position: "fixed", top: "1.5rem", left: "50%", transform: "translateX(-50%)",
+          background: "#0f0f10", border: `1px solid ${alert.color}`,
+          padding: "0.75rem 1.5rem", zIndex: 50,
+          fontFamily: "system-ui,sans-serif", fontSize: "0.82rem", color: alert.color,
+        }}>
+          {alert.message}
         </div>
       )}
 
-      <div className="flex flex-wrap lg:flex-nowrap gap-12">
-        <div className="w-full lg:w-1/2">
-          <form
-            onSubmit={handleSubmit}
-            className="bg-gray-900 shadow-md rounded-lg p-6 border border-gray-700"
-          >
-            <h2 className="text-lg font-semibold mb-3 text-teal-400">
-              {editingTransaction ? "Edit Transaction" : "Add New Transaction"}
-            </h2>
-
-            <div className="mb-3">
-              <label
-                htmlFor="type"
-                className="block text-sm font-medium text-gray-300 mb-1"
-              >
-                Type
-              </label>
-              <select
-                id="type"
-                name="type"
-                value={formData.type}
-                onChange={handleInputChange}
-                required
-                className="bg-gray-700 text-white border border-gray-800 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full py-2 px-3 sm:text-sm cursor-pointer"
-              >
-                <option value="income">Income</option>
-                <option value="expense">Expense</option>
-              </select>
-            </div>
-
-            {formData.type === "expense" && (
-              <div className="mb-3">
-                <label
-                  htmlFor="categoryId"
-                  className="block text-sm font-medium text-gray-300 mb-1"
-                >
-                  Category
-                </label>
-                <select
-                  id="categoryId"
-                  name="categoryId"
-                  value={formData.categoryId}
-                  onChange={handleInputChange}
-                  required
-                  className="bg-gray-700 text-white border border-gray-800 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full py-2 px-3 sm:text-sm cursor-pointer"
-                >
-                  <option value="">Select a Category</option>
-                  {categories &&
-                    categories.map((category) => (
-                      <option key={category.id} value={category.id}>
-                        {capitalizeFirstLetter(category.name)}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            )}
-
-            {formData.type === "income" && (
-              <div className="mb-3">
-                <label
-                  htmlFor="incomeSourceName"
-                  className="block text-sm font-medium text-gray-300 mb-1"
-                >
-                  Source
-                </label>
-                <input
-                  type="text"
-                  id="incomeSourceName"
-                  name="incomeSourceName"
-                  value={formData.incomeSourceName}
-                  onChange={handleInputChange}
-                  className="bg-gray-700 text-white border border-gray-800 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full py-2 px-3 sm:text-sm"
-                  placeholder="Enter income source"
-                  required
-                />
-              </div>
-            )}
-
-            <div className="mb-3">
-              <label
-                htmlFor="amount"
-                className="block text-sm font-medium text-gray-300 mb-1"
-              >
-                Amount
-              </label>
-              <input
-                type="number"
-                id="amount"
-                name="amount"
-                value={formData.amount}
-                onChange={handleInputChange}
-                required
-                min="0.01"
-                step="0.01"
-                className="bg-gray-700 text-white border border-gray-800 rounded-md shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full py-2 px-3 sm:text-sm"
-              />
-            </div>
-
-            <div className="flex items-center justify-start mt-4">
-              <button
-                type="submit"
-                className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-teal-500 cursor-pointer"
-              >
-                {editingTransaction ? "Update Transaction" : "Add Transaction"}
-              </button>
-              {editingTransaction && (
-                <button
-                  type="button"
-                  onClick={clearEditingTransaction}
-                  className="ml-2 bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
-                >
-                  Cancel
-                </button>
-              )}
-            </div>
-          </form>
+      <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
+        <div style={{ marginBottom: "2.5rem", borderBottom: "1px solid rgba(255,255,255,0.06)", paddingBottom: "1.5rem" }}>
+          <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.7rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b6860", marginBottom: "0.5rem" }}>
+            income & expenses
+          </div>
+          <h1 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.8rem,3vw,2.2rem)", fontWeight: 400 }}>
+            Transactions
+          </h1>
         </div>
 
-        <div className="w-full lg:w-2/3 flex flex-col gap-4">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "2rem" }}>
+
+          {/* Form */}
           <div>
-            <h2 className="text-lg font-semibold text-green-400 mb-1">
-              Income
-            </h2>
-            {incomeTransactions.length > 0 ? (
-              <ul className="shadow overflow-hidden rounded-md border border-gray-700">
-                <li className="bg-gray-900 px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider grid grid-cols-4">
-                  <span className="text-left">Source</span>
-                  <span className="text-right">Amount</span>
-                  <span className="text-center">Date</span>
-                  <span className="text-right pr-10">Actions</span>
-                </li>
-                {incomeTransactions.map((transaction) => (
-                  <li
-                    key={transaction.id}
-                    className="px-4 py-3 bg-gray-700 grid grid-cols-4 hover:bg-gray-600 border-b border-gray-700 last:border-b-0 items-center"
-                  >
-                    <span className="text-left">
-                      {capitalizeFirstLetter(transaction.name)}
-                    </span>
-                    <span className="text-green-400 text-right">
-                      +₹{transaction.amount.toFixed(2)}
-                    </span>
-                    <span className="text-gray-300 text-center">
-                      {new Date(transaction.date).toLocaleDateString("en-GB")}
-                    </span>
-                    <div className="flex items-center justify-end space-x-2">
-                      <button
-                        onClick={() => handleEditClick(transaction)}
-                        className="bg-yellow-300 hover:bg-yellow-400 text-gray-800 font-semibold py-1 px-2 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-yellow-200 cursor-pointer flex items-center"
-                      >
-                        <FaPencilAlt className="mr-1" /> <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(transaction.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-red-400 cursor-pointer flex items-center"
-                      >
-                        <FaTrashAlt className="mr-1" /> <span>Delete</span>
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-400">No Income transactions yet</p>
-            )}
+            <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#6b6860", marginBottom: "1.2rem" }}>
+              {editingTransaction ? "edit transaction" : "add transaction"}
+            </div>
+            <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+
+              <div>
+                <label style={labelStyle}>type</label>
+                <select name="type" value={formData.type} onChange={e => setFormData(p => ({ ...p, type: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
+                  <option value="income">Income</option>
+                  <option value="expense">Expense</option>
+                </select>
+              </div>
+
+              {formData.type === "expense" && (
+                <div>
+                  <label style={labelStyle}>category</label>
+                  <select name="categoryId" value={formData.categoryId} onChange={e => setFormData(p => ({ ...p, categoryId: e.target.value }))} style={{ ...inputStyle, cursor: "pointer" }}>
+                    <option value="">select a category</option>
+                    {categories.map(c => <option key={c.id} value={c.id}>{capitalize(c.name)}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {formData.type === "income" && (
+                <div>
+                  <label style={labelStyle}>source</label>
+                  <input type="text" value={formData.incomeSourceName} onChange={e => setFormData(p => ({ ...p, incomeSourceName: e.target.value }))} placeholder="e.g. salary, freelance..." style={inputStyle} />
+                </div>
+              )}
+
+              <div>
+                <label style={labelStyle}>amount (₹)</label>
+                <input type="number" value={formData.amount} onChange={e => setFormData(p => ({ ...p, amount: e.target.value }))} min="0.01" step="0.01" style={inputStyle} />
+              </div>
+
+              <div>
+                <label style={labelStyle}>date</label>
+                <input type="date" value={formData.date} onChange={e => setFormData(p => ({ ...p, date: e.target.value }))} style={{ ...inputStyle, colorScheme: "dark" }} />
+              </div>
+
+              <div style={{ display: "flex", gap: "0.75rem" }}>
+                <button type="submit" style={{
+                  flex: 1, background: "#14b8a6", color: "#0a0a0b",
+                  fontFamily: "system-ui,sans-serif", fontSize: "0.72rem",
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  fontWeight: 500, padding: "0.75rem", border: "none", cursor: "pointer",
+                }}>
+                  {editingTransaction ? "update" : "add transaction"}
+                </button>
+                {editingTransaction && (
+                  <button type="button" onClick={clearEditingTransaction} style={{
+                    background: "transparent", border: "1px solid rgba(255,255,255,0.08)",
+                    color: "#6b6860", fontFamily: "system-ui,sans-serif",
+                    fontSize: "0.72rem", letterSpacing: "0.08em", textTransform: "uppercase",
+                    padding: "0.75rem 1rem", cursor: "pointer",
+                  }}>cancel</button>
+                )}
+              </div>
+            </form>
           </div>
 
-          <div>
-            <h2 className="text-lg font-semibold text-red-400 mb-1">
-              Expenses
-            </h2>
-            {expenseTransactions.length > 0 ? (
-              <ul className="shadow overflow-hidden rounded-md border border-gray-700">
-                <li className="bg-gray-900 px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider grid grid-cols-4">
-                  <span className="text-left">Category</span>
-                  <span className="text-right">Amount</span>
-                  <span className="text-center">Date</span>
-                  <span className="text-right pr-10">Actions</span>
-                </li>
-                {expenseTransactions.map((transaction) => (
-                  <li
-                    key={transaction.id}
-                    className="px-4 py-3 bg-gray-700 grid grid-cols-4 hover:bg-gray-600 border-b border-gray-700 last:border-b-0 items-center"
-                  >
-                    <span className="text-left">
-                      {capitalizeFirstLetter(getCategoryName(transaction))}
-                    </span>
-                    <span className="text-red-400 text-right">
-                      -₹{transaction.amount.toFixed(2)}
-                    </span>
-                    <span className="text-gray-300 text-center">
-                      {new Date(transaction.date).toLocaleDateString("en-GB")}
-                    </span>
-                    <div className="flex items-center justify-end space-x-2">
-                      <button
-                        onClick={() => handleEditClick(transaction)}
-                        className="bg-yellow-300 hover:bg-yellow-400 text-gray-800 font-semibold py-1 px-2 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-yellow-200 cursor-pointer flex items-center"
-                      >
-                        <FaPencilAlt className="mr-1" /> <span>Edit</span>
-                      </button>
-                      <button
-                        onClick={() => handleDeleteClick(transaction.id)}
-                        className="bg-red-500 hover:bg-red-600 text-white font-semibold py-1 px-2 rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-red-400 cursor-pointer flex items-center"
-                      >
-                        <FaTrashAlt className="mr-1" /> <span>Delete</span>
-                      </button>
+          {/* Transaction lists */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "2rem" }}>
+
+            {/* Income */}
+            <div>
+              <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#14b8a6", marginBottom: "0.8rem" }}>
+                income
+              </div>
+              {incomeTransactions.length === 0 ? (
+                <div style={{ padding: "1.5rem", border: "1px solid rgba(255,255,255,0.04)", color: "#3a3835", fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", textAlign: "center" }}>
+                  no income yet
+                </div>
+              ) : (
+                <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {incomeTransactions.map((t, i) => (
+                    <div key={t.id} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "0.8rem 1rem", gap: "1rem",
+                      borderBottom: i < incomeTransactions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                      flexWrap: "wrap",
+                    }}>
+                      <div>
+                        <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.85rem", color: "#e2ddd6" }}>{capitalize(t.name || t.incomeSourceName)}</div>
+                        <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", color: "#6b6860", marginTop: "2px" }}>{new Date(t.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <span style={{ fontFamily: "Georgia,serif", fontSize: "0.95rem", color: "#14b8a6" }}>+₹{t.amount.toLocaleString()}</span>
+                        <button onClick={() => handleEditTransaction(t)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b6860", fontFamily: "system-ui,sans-serif", fontSize: "0.65rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.25rem 0.6rem", cursor: "pointer" }}>edit</button>
+                        <button onClick={() => handleDeleteClick(t.id)} style={{ background: "transparent", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", fontFamily: "system-ui,sans-serif", fontSize: "0.65rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.25rem 0.6rem", cursor: "pointer" }}>del</button>
+                      </div>
                     </div>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="text-gray-400">No Expense transactions yet</p>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Expenses */}
+            <div>
+              <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.1em", textTransform: "uppercase", color: "#f87171", marginBottom: "0.8rem" }}>
+                expenses
+              </div>
+              {expenseTransactions.length === 0 ? (
+                <div style={{ padding: "1.5rem", border: "1px solid rgba(255,255,255,0.04)", color: "#3a3835", fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", textAlign: "center" }}>
+                  no expenses yet
+                </div>
+              ) : (
+                <div style={{ border: "1px solid rgba(255,255,255,0.06)" }}>
+                  {expenseTransactions.map((t, i) => (
+                    <div key={t.id} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      padding: "0.8rem 1rem", gap: "1rem",
+                      borderBottom: i < expenseTransactions.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none",
+                      flexWrap: "wrap",
+                    }}>
+                      <div>
+                        <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.85rem", color: "#e2ddd6" }}>{capitalize(t.category?.name || "uncategorized")}</div>
+                        <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", color: "#6b6860", marginTop: "2px" }}>{new Date(t.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                        <span style={{ fontFamily: "Georgia,serif", fontSize: "0.95rem", color: "#f87171" }}>-₹{t.amount.toLocaleString()}</span>
+                        <button onClick={() => handleEditTransaction(t)} style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.08)", color: "#6b6860", fontFamily: "system-ui,sans-serif", fontSize: "0.65rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.25rem 0.6rem", cursor: "pointer" }}>edit</button>
+                        <button onClick={() => handleDeleteClick(t.id)} style={{ background: "transparent", border: "1px solid rgba(248,113,113,0.2)", color: "#f87171", fontFamily: "system-ui,sans-serif", fontSize: "0.65rem", letterSpacing: "0.06em", textTransform: "uppercase", padding: "0.25rem 0.6rem", cursor: "pointer" }}>del</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

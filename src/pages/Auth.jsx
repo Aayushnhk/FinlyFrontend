@@ -1,300 +1,167 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../contexts/AuthContext";
-import Alert from "../components/Alert";
 
-// Set base API URL from environment variables
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
 
-// Helper function for frontend password complexity check
-const isPasswordComplexFrontend = (password) => {
-  const hasNumber = /[0-9]/.test(password);
-  const hasLetter = /[a-zA-Z]/.test(password);
-  return password.length >= 8 && hasNumber && hasLetter;
-};
+const isPasswordComplex = (password) =>
+  password.length >= 8 && /[0-9]/.test(password) && /[a-zA-Z]/.test(password);
 
 function Auth() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const mode = searchParams.get("mode");
-  const [isLogin, setIsLogin] = useState(mode !== "signup");
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    ...(mode === "signup" && { firstName: "", lastName: "" }),
-  });
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const mode = searchParams.get("mode") || "login";
+  const isLogin = mode !== "signup";
+  const [formData, setFormData] = useState({ email: "", password: "", firstName: "", lastName: "" });
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); 
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuth();
 
   useEffect(() => {
-    setIsLogin(mode !== "signup");
-    setFormData((prev) => ({
-      ...prev,
-      ...(mode === "signup" && !prev.firstName && { firstName: "" }),
-      ...(mode === "signup" && !prev.lastName && { lastName: "" }),
-    }));
-    setErrorMessage("");
-    setSuccessMessage("");
-    setPasswordError("");
-    setShowPassword(false);
-    setIsSubmitting(false); // Reset submitting state on mode change
+    setError(""); setSuccess(""); setPasswordError(""); setShowPassword(false); setIsSubmitting(false);
   }, [mode]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    if (mode === "signup" && name === "password") {
-      if (!isPasswordComplexFrontend(value)) {
-        setPasswordError(
-          "Your password must be a minimum of 8 characters and include a combination of both letters and numbers."
-        );
-      } else {
-        setPasswordError("");
-      }
+    setFormData(prev => ({ ...prev, [name]: value }));
+    if (!isLogin && name === "password") {
+      setPasswordError(isPasswordComplex(value) ? "" : "Min 8 characters with letters and numbers.");
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setErrorMessage("");
-    setSuccessMessage("");
-    setPasswordError("");
-    setIsSubmitting(true); // Set submitting state to true
-
-    if (mode === "signup" && !isPasswordComplexFrontend(formData.password)) {
-      setPasswordError("Password does not meet the requirements.");
-      setIsSubmitting(false); // Reset submitting state
+    setError(""); setSuccess("");
+    if (!isLogin && !isPasswordComplex(formData.password)) {
+      setPasswordError("Min 8 characters with letters and numbers.");
       return;
     }
-
-    const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
-    const fullUrl = API_BASE_URL ? `${API_BASE_URL}${endpoint}` : endpoint;
-
+    setIsSubmitting(true);
     try {
-      const response = await fetch(fullUrl, {
+      const endpoint = isLogin ? "/api/auth/login" : "/api/auth/register";
+      const res = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
         credentials: "include",
       });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        console.log(isLogin ? "Login successful:" : "Signup successful:");
-        if (isLogin && data.token && data.userId) {
-          localStorage.setItem("authToken", data.token);
-          localStorage.setItem("userId", data.userId);
-          login({ token: data.token, user: { id: data.userId } });
-          setSuccessMessage("Login successful!");
-          setTimeout(() => navigate("/"), 1500);
+      const data = await res.json();
+      if (res.ok) {
+        if (isLogin && data.token) {
+          login({ token: data.token, user: { id: data.userId, email: formData.email } });
+          setSuccess("Welcome back!");
+          setTimeout(() => navigate("/"), 1000);
         } else if (!isLogin && data.id) {
-          localStorage.setItem("userId", data.id);
-          setSuccessMessage("Signup successful! Redirecting to login...");
+          setSuccess("Account created! Signing you in...");
           setTimeout(() => setSearchParams({ mode: "login" }), 1500);
-        } else if (isLogin && !data.token) {
-          setErrorMessage("Login successful, but no token received.");
         }
       } else {
-        console.error(isLogin ? "Login failed:" : "Signup failed:", data);
-        setErrorMessage(data.error || "Authentication failed");
+        setError(data.error || "Authentication failed.");
       }
-    } catch (error) {
-      console.error("There was an error during authentication:", error);
-      setErrorMessage(error.message || "Failed to connect to the server");
+    } catch {
+      setError("Could not connect to server.");
     } finally {
-      setIsSubmitting(false); // Reset submitting state in finally block
+      setIsSubmitting(false);
     }
   };
 
-  const handleCloseErrorAlert = () => {
-    setErrorMessage("");
-  };
-
-  const handleCloseSuccessAlert = () => {
-    setSuccessMessage("");
-  };
-
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
+  const inputStyle = {
+    width: "100%", background: "#0f0f10",
+    border: "1px solid rgba(255,255,255,0.08)",
+    padding: "0.85rem 1rem",
+    fontFamily: "system-ui,sans-serif", fontSize: "0.88rem",
+    color: "#e2ddd6", outline: "none", boxSizing: "border-box",
   };
 
   return (
-    <div className="bg-black-900 flex items-start justify-center p-4 pt-24">
-      <div className="w-full max-w-md bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 p-8 transition-all duration-300 ease-in-out hover:shadow-xl">
-        <h2 className="text-center text-2xl font-bold text-white mb-6">
-          {isLogin ? "Sign in to your account" : "Create a new account"}
-        </h2>
+    <div style={{ background: "#0a0a0b", minHeight: "100vh", color: "#e2ddd6", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))" }}>
 
-        {successMessage && (
-          <Alert
-            message={successMessage}
-            type="login"
-            onClose={handleCloseSuccessAlert}
-          />
-        )}
-
-        {errorMessage && (
-          <Alert
-            message={errorMessage}
-            type="error"
-            onClose={handleCloseErrorAlert}
-          />
-        )}
-
-        <form className="space-y-4" onSubmit={handleSubmit}>
-          <input type="hidden" name="remember" defaultValue="true" />
-          {mode === "signup" && (
-            <>
-              <div>
-                <label htmlFor="firstName" className="sr-only">
-                  First Name
-                </label>
-                <input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  autoComplete="given-name"
-                  required
-                  className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
-                  placeholder="First Name"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                />
-              </div>
-              <div>
-                <label htmlFor="lastName" className="sr-only">
-                  Last Name
-                </label>
-                <input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  autoComplete="family-name"
-                  required
-                  className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
-                  placeholder="Last Name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                />
-              </div>
-            </>
-          )}
-          <div className="relative">
-            <label htmlFor="email-address" className="sr-only">
-              Email address
-            </label>
-            <input
-              id="email-address"
-              name="email"
-              type="email"
-              autoComplete="email"
-              required
-              className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
-              placeholder="Email address"
-              value={formData.email}
-              onChange={handleChange}
-            />
+      {/* Left — form */}
+      <div style={{ padding: "clamp(3rem,8vw,6rem) clamp(1.5rem,5vw,4rem)", display: "flex", flexDirection: "column", justifyContent: "center", borderRight: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ maxWidth: "360px", width: "100%" }}>
+          <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.68rem", letterSpacing: "0.12em", textTransform: "uppercase", color: "#6b6860", marginBottom: "1rem" }}>
+            {isLogin ? "welcome back" : "get started"}
           </div>
+          <h2 style={{ fontFamily: "Georgia,serif", fontSize: "clamp(1.8rem,4vw,2.2rem)", fontWeight: 400, marginBottom: "2.5rem", lineHeight: 1.2 }}>
+            {isLogin ? "sign in to Finly" : "create your account"}
+          </h2>
 
-          <div className="relative pb-6">
-            <label htmlFor="password" className="sr-only">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete={isLogin ? "current-password" : "new-password"}
-                required
-                className="w-full px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 bg-gray-700 text-white"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-500 focus:outline-none cursor-pointer"
-              >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
-              </button>
+          {error && (
+            <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", color: "#f87171", marginBottom: "1.2rem", paddingLeft: "1rem", borderLeft: "2px solid #f87171" }}>
+              {error}
             </div>
-            {mode === "signup" && passwordError && (
-              <p className="mt-2 text-sm text-red-500">{passwordError}</p>
-            )}
-          </div>
-
-          {isLogin && (
-            <div className="flex items-center justify-between">
-              <label className="flex items-center text-sm text-gray-400">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-teal-600 border-gray-600 rounded focus:ring-teal-500 cursor-pointer"
-                />
-                <span className="ml-2">Remember me</span>
-              </label>
-              <a href="#" className="text-sm text-teal-500 hover:underline">
-                Forgot your password?
-              </a>
+          )}
+          {success && (
+            <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", color: "#14b8a6", marginBottom: "1.2rem", paddingLeft: "1rem", borderLeft: "2px solid #14b8a6" }}>
+              {success}
             </div>
           )}
 
-          <button
-            type="submit"
-            className={`w-full flex justify-center items-center gap-2 py-2 px-4 text-white ${
-              isSubmitting
-                ? "bg-teal-400 cursor-not-allowed"
-                : "bg-teal-600 hover:bg-teal-700 cursor-pointer"
-            } font-medium rounded-md transition-colors duration-200`}
-            disabled={isSubmitting}
-          >
-            <FaLock />
-            {isLogin ? "Sign in" : "Sign up"}
-            {isSubmitting && (
-              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+          <form onSubmit={handleSubmit}>
+            {!isLogin && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+                <input name="firstName" placeholder="first name" value={formData.firstName} onChange={handleChange} required style={inputStyle} />
+                <input name="lastName" placeholder="last name" value={formData.lastName} onChange={handleChange} required style={inputStyle} />
+              </div>
             )}
-          </button>
-        </form>
 
-        <div className="mt-6 text-center text-sm text-gray-400">
-          {isLogin ? (
-            <>
-              Don&apos;t have an account?{" "}
-              <button
-                onClick={() => setSearchParams({ mode: "signup" })}
-                className="text-teal-500 hover:underline font-medium cursor-pointer"
-              >
-                Sign up
+            <input name="email" type="email" placeholder="email address" value={formData.email} onChange={handleChange} required style={{ ...inputStyle, marginBottom: "0.75rem" }} />
+
+            <div style={{ position: "relative", marginBottom: "0.5rem" }}>
+              <input name="password" type={showPassword ? "text" : "password"} placeholder="password" value={formData.password} onChange={handleChange} required style={{ ...inputStyle, paddingRight: "3rem" }} />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: "absolute", right: "1rem", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", color: "#6b6860", cursor: "pointer", fontSize: "0.85rem" }}>
+                {showPassword ? "hide" : "show"}
               </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{" "}
-              <button
-                onClick={() => setSearchParams({ mode: "login" })}
-                className="text-teal-500 hover:underline font-medium cursor-pointer"
-              >
-                Sign in
+            </div>
+
+            {passwordError && (
+              <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.72rem", color: "#f87171", marginBottom: "1rem" }}>{passwordError}</div>
+            )}
+
+            <button type="submit" disabled={isSubmitting} style={{
+              width: "100%", background: "#14b8a6", color: "#0a0a0b",
+              fontFamily: "system-ui,sans-serif", fontSize: "0.75rem",
+              letterSpacing: "0.1em", textTransform: "uppercase",
+              fontWeight: 500, padding: "0.9rem", border: "none",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
+              opacity: isSubmitting ? 0.7 : 1, marginTop: "1rem", marginBottom: "1.5rem",
+            }}>
+              {isSubmitting ? "please wait..." : isLogin ? "sign in" : "create account"}
+            </button>
+
+            <div style={{ textAlign: "center" }}>
+              <button type="button" onClick={() => setSearchParams({ mode: isLogin ? "signup" : "login" })} style={{
+                background: "none", border: "none", cursor: "pointer",
+                fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", color: "#6b6860",
+              }}>
+                {isLogin ? "don't have an account? sign up →" : "already have an account? sign in →"}
               </button>
-            </>
-          )}
+            </div>
+          </form>
         </div>
       </div>
+
+      {/* Right — value prop */}
+      <div style={{ padding: "clamp(3rem,8vw,6rem) clamp(1.5rem,5vw,4rem)", display: "flex", flexDirection: "column", justifyContent: "center", gap: "2.5rem" }} className="auth-right">
+        {[
+          { num: "01", title: "Track everything", desc: "Log income and expenses across categories. See exactly where your money goes." },
+          { num: "02", title: "Budget with intention", desc: "Set budgets per category and track spending in real time against your limits." },
+          { num: "03", title: "Understand your finances", desc: "Visual charts show your income vs expenses and spending breakdown at a glance." },
+        ].map((f, i) => (
+          <div key={i} style={{ paddingLeft: "1.5rem", borderLeft: "1px solid rgba(20,184,166,0.2)" }}>
+            <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.65rem", color: "#6b6860", letterSpacing: "0.1em", marginBottom: "0.5rem" }}>{f.num}</div>
+            <div style={{ fontFamily: "Georgia,serif", fontSize: "1rem", color: "#e2ddd6", marginBottom: "0.4rem" }}>{f.title}</div>
+            <div style={{ fontFamily: "system-ui,sans-serif", fontSize: "0.78rem", color: "#6b6860", lineHeight: 1.6 }}>{f.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <style>{`
+        @media (max-width: 640px) { .auth-right { display: none !important; } }
+      `}</style>
     </div>
   );
 }
